@@ -1,43 +1,153 @@
 package com.shunko.tictactoe;
 
+import java.util.Objects;
+import java.util.Random;
 import java.util.Scanner;
+import java.util.Set;
+
+class Player {
+    private boolean ai;
+    private String symbol;
+    private String level;
+
+    public Player(boolean ai, String symbol, String level) {
+        this.ai = ai;
+        this.symbol = symbol;
+        this.level = level;
+    }
+
+    public boolean isAi() {
+        return this.ai;
+    }
+
+    public String getSymbol() {
+        return this.symbol;
+    }
+
+    public String getLevel() {
+        return this.level;
+    }
+
+}
 
 public class Main {
 
+    private static final Set<String> STRINGS = Set.of("user", "easy");
+    private static final Set<String> COMMANDS = Set.of("start", "exit");
     private static Scanner scanner = new Scanner(System.in);
+    private static String[][] mainMatrix;
 
     public static void main(String[] args) {
-
-        String[][] mainMatrix = matrixInit();
-        printMatrix(mainMatrix);
-        int[] coordinates;
-        boolean isGameFinished = true;
+        String inputString;
+        boolean correctInput = true;
 
         do {
-            coordinates = playerNextMove();
-            System.out.println("Adapted Coords: " + coordinates[0] + " " + coordinates[1] + " matrix :" + mainMatrix[coordinates[0]][coordinates[1]]);
-            if (checkPlayersCoords(mainMatrix, coordinates)) {
-                System.out.println("Correct coordinates!");
-                mainMatrix = updateMatrix(mainMatrix, coordinates, whatSymbolToUse(mainMatrix));
-                printMatrix(mainMatrix);
-                if (isBoardFull(mainMatrix)) {
-                    System.out.println("Board is full! Game over!");
-                    isGameFinished = false;
-                }
-            } else {
-                System.out.println("This cell is ocupied! Choose another one!");
-            }
-        } while (isGameFinished);
-
+            System.out.print("Input command: ");
+            inputString = scanner.nextLine();
+            String[] procString = inputString.split(" ");
+            if (!procString[0].equals("exit")) {
+                if (isCommandCorrect(procString)) mainGameCycle(procString);
+                else System.out.println("Bad parameters!");
+            } else correctInput = false;
+        } while (correctInput);
 
     }
 
-    // public static int checkGameState(String[][] matrix)
+    public static boolean isCommandCorrect(String[] inputLine) {
+        if ((inputLine.length < 3) || !COMMANDS.contains(inputLine[0])) return false;
+        return STRINGS.contains(inputLine[1]) && STRINGS.contains(inputLine[2]);
+    }
+
+    public static Player playerInit(String player, String symbol) {
+        if (player.equals("user")) {
+            return new Player(false, symbol, player);
+        } else {
+            return new Player(true, symbol, player);
+        }
+    }
+
+    public static void makePlayerMove(Player player) {
+        int[] coordinates;
+        if (player.isAi()) {
+            coordinates = computerNextMove(mainMatrix);
+            System.out.println("Making move level " + player.getLevel());
+        } else coordinates = playerNextMove();
+        updateMatrix(mainMatrix, coordinates, player.getSymbol());
+        printMatrix(mainMatrix);
+    }
+
+    public static boolean checkIsGameOver(String[][] matrix) {
+        try {
+            int result = checkGameState(matrix);
+            switch (result) {
+                case 1:
+                    return false;
+                case 2:
+                    System.out.println("Draw");
+                    return true;
+                case 3:
+                    System.out.println("X wins");
+                    return true;
+                case 4:
+                    System.out.println("O wins");
+                    return true;
+            }
+        } catch (IllegalStateException ex) {
+            ex.printStackTrace();
+        }
+        return true;
+    }
+
+    public static void mainGameCycle(String[] commandLine) {
+        Player player1 = playerInit(commandLine[1], "X");
+        Player player2 = playerInit(commandLine[2], "O");
+        boolean isGameFinished = false;
+
+        mainMatrix = matrixInit();
+        printMatrix(mainMatrix);
+
+        while (!isGameFinished) {
+            makePlayerMove(player1);
+            if (!(isGameFinished = checkIsGameOver(mainMatrix))) {
+                makePlayerMove(player2);
+                isGameFinished = checkIsGameOver(mainMatrix);
+            }
+        }
+    }
+
+    public static int[] computerNextMove(String[][] mainMatrix) {
+        Random random = new Random();
+        int[] coords = new int[2];
+        boolean isCorrectCoords = true;
+        do {
+            coords[0] = random.nextInt(3);
+            coords[1] = random.nextInt(3);
+            if (checkPlayersCoords(mainMatrix, coords)) isCorrectCoords = false;
+        } while (isCorrectCoords);
+        return coords;
+    }
+
+    public static int checkGameState(String[][] matrix) throws IllegalStateException {
+        String result = checkIfAnybodyWin(matrix);
+        switch (result) {
+            case "-":
+                if (isBoardFull(matrix)) return 2;
+                else return 1;
+            case "X":
+                return 3;
+            case "O":
+                return 4;
+            case " ":
+                return 1;
+            default:
+                throw new IllegalStateException("Unexpected value: " + result);
+        }
+    }
 
     public static boolean isBoardFull(String[][] matrix) {
         int[] coords = new int[2];
-        for (int i=0; i<3; i++) {
-            for (int j=0; j<3; j++) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
                 coords[0] = i;
                 coords[1] = j;
                 if (checkPlayersCoords(matrix, coords)) return false;
@@ -46,34 +156,34 @@ public class Main {
         return true;
     }
 
-    public static String checkIfSomebodyWin(String[][] matrix) {
-        for (int i=0; i<2; i++) {
-            String symbol = matrix[i][0];
-            if (matrix[i][1].equals(symbol) && matrix[i][2].equals(symbol)) return symbol;
+    public static String checkIfAnybodyWin(String[][] matrix) {
+        String symbol;
+        int i;
+        for (i = 0; i < 3; i++) {
+            symbol = matrix[i][0];
+            if (checkSymbolStatus(matrix[i][1], matrix[i][2], symbol))
+                return symbol;
         }
-        for (int j=0; j<2; j++) {
-            String symbol = matrix[0][j];
-            if (matrix[1][j].equals(symbol) && matrix[2][j].equals(symbol)) return symbol;
+        for (int j = 0; j < 3; j++) {
+            symbol = matrix[0][j];
+            if (checkSymbolStatus(matrix[1][j], matrix[2][j], symbol))
+                return symbol;
         }
+        symbol = matrix[0][0];
+        if (checkSymbolStatus(matrix[1][1], matrix[2][2], symbol))
+            return symbol;
+        symbol = matrix[0][2];
+        if (checkSymbolStatus(matrix[1][1], matrix[2][0], symbol))
+            return symbol;
         return "-";
     }
 
-    public static String whatSymbolToUse(String[][] matrix) {
-        int xCounter = 0;
-        int oCounter = 0;
-        for (int i=0; i<3; i++) {
-            for (int j=0; j<3; j++) {
-                if (matrix[i][j].equals("X")) xCounter++;
-                if (matrix[i][j].equals("O")) oCounter++;
-            }
-        }
-        if (xCounter == oCounter) return "X";
-        else return "O";
+    public static boolean checkSymbolStatus(String position1, String position2, String symbol) {
+        return position1.equals(symbol) && position2.equals(symbol) && !Objects.equals(symbol, " ");
     }
 
-    public static String[][] updateMatrix(String[][] matrix, int[] coords, String symbol) {
+    public static void updateMatrix(String[][] matrix, int[] coords, String symbol) {
         matrix[coords[0]][coords[1]] = symbol;
-        return matrix;
     }
 
     public static boolean checkPlayersCoords(String[][] matrix, int[] coords) {
@@ -81,23 +191,10 @@ public class Main {
     }
 
     public static String[][] matrixInit() {
-        String inputString = scanner.nextLine().toUpperCase();
-        char[] processedString = inputString.toCharArray();
         String[][] matrix = new String[3][3];
-        int counter = 0;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                switch (processedString[counter++]) {
-                    case 'X':
-                        matrix[i][j] = "X";
-                        break;
-                    case 'O':
-                        matrix[i][j] = "O";
-                        break;
-                    case '_':
-                        matrix[i][j] = " ";
-                        break;
-                }
+                matrix[i][j] = " ";
             }
         }
         return matrix;
@@ -110,10 +207,11 @@ public class Main {
             for (String element : strings) {
                 System.out.print(element + " ");
             }
-            System.out.println(" |");
+            System.out.println("|");
         }
         System.out.println("---------");
     }
+
 
     public static int[] playerNextMove() {
         int[] coords = new int[2];
@@ -127,18 +225,22 @@ public class Main {
                 coords[0] = 3 - Integer.parseInt(processedString[1]);
                 coords[1] = Integer.parseInt(processedString[0]) - 1;
                 if (coords[0] <= 2 && coords[0] >= 0 && coords[1] <= 2 && coords[1] >= 0)
-                    correctInput = false;
+                    if (checkPlayersCoords(mainMatrix, coords)) correctInput = false;
+                    else System.out.println("This cell is occupied! Choose another one!");
                 else System.out.println("Coordinates should be from 1 to 3!");
-            } else System.out.println("You should enter numbers !");
+            } else System.out.println("You should enter numbers!");
         } while (correctInput);
         return coords;
     }
 
     public static boolean checkIsInputDigits(String stringToCheck) {
-        for (char check : stringToCheck.toCharArray()) {
-            if (!(Character.isDigit(check) || check == ' ')) return false;
-        }
+        if (stringToCheck != null && !stringToCheck.isEmpty()) {
+            for (char check : stringToCheck.toCharArray()) {
+                if (!(Character.isDigit(check) || check == ' ')) return false;
+            }
+        } else return false;
         return true;
     }
 
 }
+
