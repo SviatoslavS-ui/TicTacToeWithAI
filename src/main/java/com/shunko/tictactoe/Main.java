@@ -1,39 +1,11 @@
 package com.shunko.tictactoe;
 
-import java.util.Objects;
-import java.util.Random;
-import java.util.Scanner;
-import java.util.Set;
-
-class Player {
-    private boolean ai;
-    private String symbol;
-    private String level;
-
-    public Player(boolean ai, String symbol, String level) {
-        this.ai = ai;
-        this.symbol = symbol;
-        this.level = level;
-    }
-
-    public boolean isAi() {
-        return this.ai;
-    }
-
-    public String getSymbol() {
-        return this.symbol;
-    }
-
-    public String getLevel() {
-        return this.level;
-    }
-
-}
+import java.util.*;
 
 public class Main {
 
-    private static final Set<String> STRINGS = Set.of("user", "easy");
-    private static final Set<String> COMMANDS = Set.of("start", "exit");
+    public static final Set<String> STRINGS = new HashSet<>(Arrays.asList("user", "easy", "medium", "hard"));
+    private static final Set<String> COMMANDS = new HashSet<>(Arrays.asList("start", "exit"));
     private static Scanner scanner = new Scanner(System.in);
     private static String[][] mainMatrix;
 
@@ -59,17 +31,22 @@ public class Main {
     }
 
     public static Player playerInit(String player, String symbol) {
-        if (player.equals("user")) {
-            return new Player(false, symbol, player);
-        } else {
-            return new Player(true, symbol, player);
+        switch (player) {
+            case "easy":
+                return new EasyAiPlayer(true, symbol, player);
+            case "medium":
+                return new MediumAiPlayer(true, symbol, player);
+            case "hard":
+                return new HardAiPlayer(true, symbol, player);
+            default:
+                return new Player(false, symbol);
         }
     }
 
     public static void makePlayerMove(Player player) {
         int[] coordinates;
         if (player.isAi()) {
-            coordinates = computerNextMove(mainMatrix);
+            coordinates = player.makeMove(mainMatrix);
             System.out.println("Making move level " + player.getLevel());
         } else coordinates = playerNextMove();
         updateMatrix(mainMatrix, coordinates, player.getSymbol());
@@ -115,18 +92,6 @@ public class Main {
         }
     }
 
-    public static int[] computerNextMove(String[][] mainMatrix) {
-        Random random = new Random();
-        int[] coords = new int[2];
-        boolean isCorrectCoords = true;
-        do {
-            coords[0] = random.nextInt(3);
-            coords[1] = random.nextInt(3);
-            if (checkPlayersCoords(mainMatrix, coords)) isCorrectCoords = false;
-        } while (isCorrectCoords);
-        return coords;
-    }
-
     public static int checkGameState(String[][] matrix) throws IllegalStateException {
         String result = checkIfAnybodyWin(matrix);
         switch (result) {
@@ -158,8 +123,7 @@ public class Main {
 
     public static String checkIfAnybodyWin(String[][] matrix) {
         String symbol;
-        int i;
-        for (i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++) {
             symbol = matrix[i][0];
             if (checkSymbolStatus(matrix[i][1], matrix[i][2], symbol))
                 return symbol;
@@ -222,8 +186,8 @@ public class Main {
             inputString = scanner.nextLine();
             if (checkIsInputDigits(inputString)) {
                 String[] processedString = inputString.split(" ");
-                coords[0] = 3 - Integer.parseInt(processedString[1]);
-                coords[1] = Integer.parseInt(processedString[0]) - 1;
+                coords[0] = Integer.parseInt(processedString[0]) - 1;
+                coords[1] = Integer.parseInt(processedString[1]) - 1;
                 if (coords[0] <= 2 && coords[0] >= 0 && coords[1] <= 2 && coords[1] >= 0)
                     if (checkPlayersCoords(mainMatrix, coords)) correctInput = false;
                     else System.out.println("This cell is occupied! Choose another one!");
@@ -243,4 +207,5 @@ public class Main {
     }
 
 }
+
 
